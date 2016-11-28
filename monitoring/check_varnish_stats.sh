@@ -1,11 +1,14 @@
 #!/bin/bash
 
 ################################################################################
-# Author: Ivan Alejandro						       #
 # Version: 1.0								       #
 ################################################################################
 #
-# Alarmas para los stats de Varnish
+# Nagios check for Varnish API Agent
+#
+# TODO
+# - Rellenar los 5 argumentos, sino, da error
+# - Comprobar que jq instalado
 #
 
 # ARGUMENTS
