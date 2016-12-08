@@ -6,10 +6,9 @@
 # Dependences: https://www.varnish-cache.org/
 #
 # TODO
-# [] getopts arguments
-# [] check flag 'b'
+# check flag 'b'
 #------------------------------------------------------------------------------
-VERSION=1.1
+VERSION=1.2
 
 # Print help
 _usage() {
@@ -70,47 +69,21 @@ _main() {
 	fi
 }
 
-# Checks
-if [[ ! $(which jq) ]]; then
-	echo "jq isn't installed. Please install it."
-	exit 1;
-fi
-
 # Arguments
 while getopts ":H:u:p:f:w:c:P:h" opt; do
   case $opt in
-    h)
-      _usage
-      echo "help"
-      exit 1
-      ;;
-    H)
-      HOST=$OPTARG;;
-    u)
-      USER=$OPTARG;;
-    p)
-      PASS=$OPTARG;;
-    f)
-      FIELD=$OPTARG;;
-    w)
-      WARNING=$OPTARG;;
-    c)
-      CRITICAL=$OPTARG;;
-    P)
-      if [[ ! -z "$OPTARG" ]]; then
-              PORT=$OPTARG
-      fi
-      ;;
-    \?)
-      echo "Invalid option: -$OPTARG" >&2
-      _usage
-      exit 2
-      ;;
-    :)
-      echo "Requiere an argument: -$OPTARG" >&2
-      _usage
-      exit 2
-      ;;
+    h) _usage; exit 1;;
+    H) HOST=$OPTARG;;
+    u) USER=$OPTARG;;
+    p) PASS=$OPTARG;;
+    f) FIELD=$OPTARG;;
+    w) WARNING=$OPTARG;;
+    c) CRITICAL=$OPTARG;;
+    P) if [[ ! -z "$OPTARG" ]]; then
+           PORT=$OPTARG
+       fi;;
+    \?) echo "Invalid option: -$OPTARG" >&2; _usage; exit 2;;
+    :) echo "Requiere an argument: -$OPTARG" >&2; _usage; exit 2;;
   esac
 done
 
@@ -118,9 +91,15 @@ done
 if [[ -z "$HOST" || -z "$USER" || -z "$PASS" || -z "$FIELD" || -z "$WARNING" || -z "$CRITICAL" ]]; then
         echo "Empty obligatory arguments."
         _usage
-        exit 1
+        exit 1;
 elif [[ -z "$PORT" ]]; then
 	PORT=6085
+fi
+
+# Checks
+if [[ ! $(which jq) ]]; then
+	echo "jq isn't installed. Please install it."
+	exit 1;
 fi
 
 # Vars
@@ -141,7 +120,7 @@ STATE_UNKNOWN=3
 # Main #####################################################
 
 if [[ -z "$JSON" ]]; then
-	exit 2
+	exit 2;
 fi
 
 if [[ "$FLAG" == "b" ]]; then
