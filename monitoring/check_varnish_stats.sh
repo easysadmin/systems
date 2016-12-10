@@ -10,11 +10,17 @@
 #------------------------------------------------------------------------------
 VERSION=1.2
 
+# Exit codes
+STATE_OK=0
+STATE_WARNING=1
+STATE_CRITICAL=2
+STATE_UNKNOWN=3
+
 # Print help
 _usage() {
 echo "Usage: check_varnish_stats.sh [-h help] -H <host> [-P port] -u <user> -p <password> -f <field> -w <warning> -c <critical>
 
-  -h, --help	Print this help message
+  -h		Print this help message
   -H		Host where is Varnish API Agent
   -P		Port where Varnish Agent listen
   -u		Varnish Agent
@@ -29,7 +35,7 @@ echo "Usage: check_varnish_stats.sh [-h help] -H <host> [-P port] -u <user> -p <
   2  if serious trouble (e.g., cannot access command-line argument)
   3  unknown
   "
-	exit 0;
+	exit $STATE_OK;
 }
 
 # Save value_tmp for counters
@@ -71,35 +77,35 @@ _main() {
 
 # Arguments
 while getopts ":H:u:p:f:w:c:P:h" opt; do
-  case $opt in
-    h) _usage; exit 1;;
-    H) HOST=$OPTARG;;
-    u) USER=$OPTARG;;
-    p) PASS=$OPTARG;;
-    f) FIELD=$OPTARG;;
-    w) WARNING=$OPTARG;;
-    c) CRITICAL=$OPTARG;;
-    P) if [[ ! -z "$OPTARG" ]]; then
-           PORT=$OPTARG
-       fi;;
-    \?) echo "Invalid option: -$OPTARG" >&2; _usage; exit 2;;
-    :) echo "Requiere an argument: -$OPTARG" >&2; _usage; exit 2;;
-  esac
+	case $opt in
+		h) _usage; exit $STATE_OK;;
+		H) HOST=$OPTARG;;
+		u) USER=$OPTARG;;
+		p) PASS=$OPTARG;;
+		f) FIELD=$OPTARG;;
+		w) WARNING=$OPTARG;;
+		c) CRITICAL=$OPTARG;;
+		P) if [[ ! -z "$OPTARG" ]]; then
+			PORT=$OPTARG
+		   fi;;
+		\?) echo "Invalid option: -$OPTARG" >&2; _usage; exit $STATE_CRITICAL;;
+		:) echo "Requiere an argument: -$OPTARG" >&2; _usage; exit $STATE_CRITICAL;;
+	esac
 done
 
 # Check arguments
 if [[ -z "$HOST" || -z "$USER" || -z "$PASS" || -z "$FIELD" || -z "$WARNING" || -z "$CRITICAL" ]]; then
         echo "Empty obligatory arguments."
         _usage
-        exit 1;
+        exit $STATE_WARNING;
 elif [[ -z "$PORT" ]]; then
 	PORT=6085
 fi
 
-# Checks
+# Check dependences
 if [[ ! $(which jq) ]]; then
 	echo "jq isn't installed. Please install it."
-	exit 1;
+	exit $STATE_CRITICAL;
 fi
 
 # Vars
@@ -110,21 +116,17 @@ DESCRIPTION=$(echo ${JSON} | jq '.description' | sed -e 's/ /_/g')
 RESULT=$(_returnValue)
 PERF_DATA="| ${DESCRIPTION}=${RESULT};${WARNING};${CRITICAL};0"
 
-# Exit codes
-STATE_OK=0
-STATE_WARNING=1
-STATE_CRITICAL=2
-STATE_UNKNOWN=3
-
 
 # Main #####################################################
 
 if [[ -z "$JSON" ]]; then
-	exit 2;
+	# STATE_CRITICAL
+	exit $STATE_CRITICAL;
 fi
 
 if [[ "$FLAG" == "b" ]]; then
-	echo $STATE_UNKNOWN
+	# STATE_UNKNOWN
+	exit $STATE_UNKNOWN
 else
 	_main
 fi
