@@ -15,13 +15,13 @@ _usage() {
 echo "Usage: check_varnish_stats.sh [-h help] -H <host> [-P port] -u <user> -p <password> -f <field> -w <warning> -c <critical>
 
   -h, --help	Print this help message
-  host		Host where is Varnish API Agent
-  port		Port where Varnish Agent listen
-  user		Varnish Agent
-  pass		Varnish Agent password
-  field		Field of Varnish API to check (see with command \"varnishstat -l\")
-  warning	Warning value
-  critical	Critical value
+  -H		Host where is Varnish API Agent
+  -P		Port where Varnish Agent listen
+  -u		Varnish Agent
+  -p		Varnish Agent password
+  -f		Field of Varnish API to check (see with command \"varnishstat -l\")
+  -w		Warning value
+  -c		Critical value
   
   Exit status:
   0  if OK
