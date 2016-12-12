@@ -20,14 +20,14 @@ STATE_UNKNOWN=3
 _usage() {
 echo "Usage: check_varnish_stats.sh [-h help] -H <host> [-P port] -u <user> -p <password> -f <field> -w <warning> -c <critical>
 
-  -h		Print this help message
-  -H		Host where is Varnish API Agent
-  -P		Port where Varnish Agent listen
-  -u		Varnish Agent
-  -p		Varnish Agent password
-  -f		Field of Varnish API to check (see with command \"varnishstat -l\")
-  -w		Warning value
-  -c		Critical value
+  -h	Print this help message
+  -H	Host where is Varnish API Agent
+  -P	Port where Varnish Agent listen
+  -u	Varnish Agent
+  -p	Varnish Agent password
+  -f	Field of Varnish API to check (see with command \"varnishstat -l\")
+  -w	Warning value
+  -c	Critical value
   
   Exit status:
   0  if OK
@@ -46,11 +46,22 @@ _persistanceValue() {
 	fi
 }
 
+# Less than zero
+_lessZero() {
+	NUM=$(expr $VALUE - $(</tmp/${HOST}_${FIELD}))
+	if [[ $NUM -lt 0 ]]; then
+ 		NUM=0
+		echo $NUM
+	else
+		echo $NUM
+	fi
+}
+
 # Calculate the result
 _returnValue() {
 	if [[ $FLAG == "c" ]]; then
 		_persistanceValue
-		VALUE_TEMP=$(expr $VALUE - $(</tmp/${HOST}_${FIELD}))
+		VALUE_TEMP=$(_lessZero)
 		echo $VALUE > /tmp/${HOST}_${FIELD}
 		echo $VALUE_TEMP
 	else
