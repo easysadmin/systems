@@ -4,8 +4,6 @@
 # 	     Nagios check for Varnish API Agent with perfdata
 #
 # Dependences: https://www.varnish-cache.org/
-# 	       Varnish software
-#              Varnish agent
 #
 # TODO
 # check flag 'b'
@@ -115,9 +113,6 @@ fi
 if [[ ! $(which jq) ]]; then
 	echo "jq isn't installed. Please install it"
 	exit $STATE_CRITICAL;
-elif [[ ! $(which varnish-agent) ]]; then
-	echo "varnish-agent isn't installed. Please install it"
-	exit $STATE_CRITICAL
 fi
 
 # Vars
