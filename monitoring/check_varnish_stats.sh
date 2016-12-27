@@ -35,7 +35,6 @@ echo "Usage: check_varnish_stats.sh [-h help] -H <host> [-P port] -u <user> -p <
   2  if serious trouble (e.g., cannot access command-line argument)
   3  unknown
   "
-	exit $STATE_OK;
 }
 
 # Save value_tmp for counters
@@ -106,7 +105,7 @@ done
 
 # Check arguments
 if [[ -z "$HOST" || -z "$USER" || -z "$PASS" || -z "$FIELD" || -z "$WARNING" || -z "$CRITICAL" ]]; then
-        echo "Empty obligatory arguments."
+        echo "Empty obligatory arguments"
         _usage
         exit $STATE_WARNING;
 elif [[ -z "$PORT" ]]; then
@@ -115,8 +114,11 @@ fi
 
 # Check dependences
 if [[ ! $(which jq) ]]; then
-	echo "jq isn't installed. Please install it."
+	echo "jq isn't installed. Please install it"
 	exit $STATE_CRITICAL;
+elif [[ ! $(which varnish-agent) ]]; then
+	echo "varnish-agent isn't installed. Please install it"
+	exit $STATE_CRITICAL
 fi
 
 # Vars
