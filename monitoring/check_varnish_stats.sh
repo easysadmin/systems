@@ -4,11 +4,13 @@
 # 	     Nagios check for Varnish API Agent with perfdata
 #
 # Dependences: https://www.varnish-cache.org/
+# 	       Varnish software
+#              Varnish agent
 #
 # TODO
 # check flag 'b'
 #------------------------------------------------------------------------------
-VERSION=1.2
+VERSION=1.2.1
 
 # Exit codes
 STATE_OK=0
@@ -68,18 +70,15 @@ _returnValue() {
 	fi
 }
 
-# Alarm
+# Main alarm
 _main() {
 	if [[ $RESULT -ge $CRITICAL ]]; then
-		# STATE_CRITICAL
 		echo "VARNISH $FIELD CRITICAL - $RESULT $PERF_DATA"
 		exit $STATE_CRITICAL
 	elif [[ $RESULT -ge $WARNING ]]; then
-		# Warning
 		echo "VARNISH $FIELD WARNING - $RESULT $PERF_DATA"
 		exit $STATE_WARNING
 	else
-		# Correcto
 		echo "VARNISH $FIELD OK - $RESULT $PERF_DATA"
 		exit $STATE_OK
 	fi
@@ -133,12 +132,10 @@ PERF_DATA="| ${DESCRIPTION}=${RESULT};${WARNING};${CRITICAL};0"
 # Main #####################################################
 
 if [[ -z "$JSON" ]]; then
-	# STATE_CRITICAL
 	exit $STATE_CRITICAL;
 fi
 
 if [[ "$FLAG" == "b" ]]; then
-	# STATE_UNKNOWN
 	exit $STATE_UNKNOWN
 else
 	_main
