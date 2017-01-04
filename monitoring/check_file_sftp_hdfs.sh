@@ -57,11 +57,6 @@ MESSAGE=$(echo -e "$LINE" | awk '{ print substr($0, index($0,$3)) }')
 
 # Main #####################################################
 
-if [[ -z "$RESULT" ]]; then
-	echo "UPLOAD WEBORAMA DATA UNKNOWN - $MESSAGE"
-	exit $STATE_UNKNOWN
-fi
-
 if [[ "$RESULT" == "INFO" ]]; then
 	echo "UPLOAD WEBORAMA DATA OK - $MESSAGE"
 	exit $STATE_OK
