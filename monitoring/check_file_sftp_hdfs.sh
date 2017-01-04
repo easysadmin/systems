@@ -51,19 +51,21 @@ fi
 
 # Vars
 SSH="ssh $HOST"
-RESULT=$($SSH tail -1 "$FILE" | awk '{ print $2 }' | sed 's/://')
+LINE=$($SSH tail -1 "$FILE")
+RESULT=$(echo -e "$LINE" | awk '{ print $2 }' | sed 's/://')
+MESSAGE=$(echo -e "$LINE" | awk '{ print substr($0, index($0,$3)) }')
 
 # Main #####################################################
 
 if [[ -z "$RESULT" ]]; then
-	echo "UNKNOWN"
+	echo "UPLOAD WEBORAMA DATA UNKNOWN - $MESSAGE"
 	exit $STATE_UNKNOWN
 fi
 
 if [[ "$RESULT" == "INFO" ]]; then
-	echo "UPLOAD WEBORAMA DATA OK - COMPLETED"
+	echo "UPLOAD WEBORAMA DATA OK - $MESSAGE"
 	exit $STATE_OK
 else
-	echo "UPLOAD WEBORAMA DATA FAILED - ERROR"
+	echo "UPLOAD WEBORAMA DATA FAILED - $MESSAGE"
 	exit $STATE_CRITICAL
 fi
