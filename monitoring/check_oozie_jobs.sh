@@ -18,12 +18,12 @@ STATE_UNKNOWN=3
 
 # Print help
 _usage() {
-echo "Usage: check_oozie_jobs.sh [-h help] -H <host> -u <url> -n <name-job>
+echo "Usage: check_oozie_jobs.sh [-h help] -H <host> -U <url> -A <name-job>
 
-  -h	Print this help message
-  -H	Host where is oozie
-  -u	URL oozie endpoint
-  -n	Name of job
+  -h		Print this help message
+  -H		Host where is oozie
+  -U		URL oozie endpoint
+  -A		Name of job (App Name)
   
   Exit status:
   0  if OK
@@ -34,12 +34,12 @@ echo "Usage: check_oozie_jobs.sh [-h help] -H <host> -u <url> -n <name-job>
 }
 
 # Arguments
-while getopts ":H:u:n:h" opt; do
+while getopts ":H:U:A:h" opt; do
 	case $opt in
 		h) _usage; exit $STATE_OK;;
 		H) HOST=$OPTARG;;
-		u) URL=$OPTARG;;
-		n) NAME=$OPTARG;;
+		U) URL=$OPTARG;;
+		A) NAME=$OPTARG;;
 		\?) echo "Invalid option: -$OPTARG" >&2; _usage; exit $STATE_CRITICAL;;
 		:) echo "Requiere an argument: -$OPTARG" >&2; _usage; exit $STATE_CRITICAL;;
 	esac
