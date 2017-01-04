@@ -58,11 +58,6 @@ RESULT=$($SSH "oozie jobs -oozie $URL -localtime -verbose -len 1 -filter name=$N
 
 # Main #####################################################
 
-if [[ -z "$RESULT" ]]; then
-	echo "Don't found name's job"
-	exit $STATE_CRITICAL
-fi
-
 if [[ "$RESULT" == "SUCCEEDED" || "$RESULT" == "RUNNING" ]]; then
 	echo "OOZIE'S JOB $NAME OK - $RESULT"
 	exit $STATE_OK
