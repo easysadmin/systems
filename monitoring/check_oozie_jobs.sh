@@ -65,8 +65,8 @@ fi
 
 if [[ "$RESULT" == "SUCCEEDED" || "$RESULT" == "RUNNING" ]]; then
 	echo "OOZIE'S JOB $NAME OK - $RESULT"
-	exit $STATE_CRITICAL
+	exit $STATE_OK
 else
 	echo "OOZIE'S JOB $NAME FAILED - $RESULT"
-	exit $STATE_OK
+	exit $STATE_CRITICAL
 fi
