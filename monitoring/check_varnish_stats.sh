@@ -3,7 +3,7 @@
 # [Syspixel] Check Varnish Stats
 # 	     Nagios check for Varnish API Agent with perfdata
 #
-# Dependences: https://www.varnish-cache.org/
+# Dependencies: https://www.varnish-cache.org/
 #
 # TODO
 # check flag 'b'
@@ -119,9 +119,9 @@ fi
 JSON=$(curl -s -u ${USER}:${PASS} http://${HOST}:${PORT}/stats/ | jq -S ".\"${FIELD}\"")
 FLAG=$(echo ${JSON} | jq '.flag' | sed -e 's/"//g')
 VALUE=$(echo ${JSON} | jq '.value')
-DESCRIPTION=$(echo ${JSON} | jq '.description' | sed -e 's/ /_/g')
+DESCRIPTION=$(echo ${JSON} | jq '.description' | sed -e 's/"//g' | sed -e 's/ /_/g')
 RESULT=$(_returnValue)
-PERF_DATA="| ${DESCRIPTION}=${RESULT};${WARNING};${CRITICAL};0"
+PERF_DATA="${DESCRIPTION}| ${DESCRIPTION}=${RESULT};${WARNING};${CRITICAL};0"
 
 
 # Main #####################################################
