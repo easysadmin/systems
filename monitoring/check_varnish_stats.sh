@@ -115,8 +115,22 @@ if [ ! $(which jq) ]; then
 	exit $STATE_CRITICAL
 fi
 
+# Validate request
+REQUEST=$(curl -s -I -u ${USER}:${PASS} http://${HOST}:${PORT}/status/ | head -1)
+STATUS_CODE=$(echo $REQUEST | awk '{ print $2 '})
+if [ $STATUS_CODE != 200 ]; then
+	echo "Something has gone wrong. $REQUEST"
+	exit $STATE_CRITICAL
+fi
+
+# Validate field
+JSON=$(curl -sN -u ${USER}:${PASS} http://${HOST}:${PORT}/stats/ | jq -e -S ".\"${FIELD}\"")
+if [ $? != 0 ]; then
+	echo "Something has gone wrong. jq says: $JSON"
+	exit $STATE_CRITICAL
+fi
+
 # Vars
-JSON=$(curl -s -u ${USER}:${PASS} http://${HOST}:${PORT}/stats/ | jq -S ".\"${FIELD}\"")
 FLAG=$(echo ${JSON} | jq '.flag' | sed -e 's/"//g')
 VALUE=$(echo ${JSON} | jq '.value')
 DESCRIPTION=$(echo ${JSON} | jq '.description' | sed -e 's/"//g' | sed -e 's/ /_/g')
