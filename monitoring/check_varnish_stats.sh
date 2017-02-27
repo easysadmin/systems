@@ -1,14 +1,15 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #------------------------------------------------------------------------------
 # [Syspixel] Check Varnish Stats
 # 	     Nagios check for Varnish API Agent with perfdata
 #
 # Dependencies: https://www.varnish-cache.org/
+#  		https://stedolan.github.io/jq/
 #
 # TODO
 # check flag 'b'
 #------------------------------------------------------------------------------
-VERSION=1.2.1
+VERSION=1.2.2
 
 # Exit codes
 STATE_OK=0
@@ -33,13 +34,12 @@ echo "Usage: check_varnish_stats.sh [-h help] -H <host> [-P port] -u <user> -p <
   0  if OK
   1  if minor problems (e.g., cannot create a temp file)
   2  if serious trouble (e.g., cannot access command-line argument)
-  3  unknown
-  "
+  3  unknown"
 }
 
-# Save value_tmp for counters
+# Save temp value for counters
 _persistanceValue() {
-	if [[ ! -f /tmp/${HOST}_${FIELD} ]]; then
+	if [ ! -f /tmp/${HOST}_${FIELD} ]; then
 		touch /tmp/${HOST}_${FIELD}
 		echo $VALUE > /tmp/${HOST}_${FIELD}
 	fi
@@ -48,7 +48,7 @@ _persistanceValue() {
 # Less than zero
 _lessZero() {
 	NUM=$(expr $VALUE - $(</tmp/${HOST}_${FIELD}))
-	if [[ $NUM -lt 0 ]]; then
+	if [ $NUM -lt 0 ]; then
  		NUM=0
 		echo $NUM
 	else
@@ -58,7 +58,7 @@ _lessZero() {
 
 # Calculate the result
 _returnValue() {
-	if [[ $FLAG == "c" ]]; then
+	if [ $FLAG == "c" ]; then
 		_persistanceValue
 		VALUE_TEMP=$(_lessZero)
 		echo $VALUE > /tmp/${HOST}_${FIELD}
@@ -68,12 +68,12 @@ _returnValue() {
 	fi
 }
 
-# Main alarm
+# Nagios check
 _main() {
-	if [[ $RESULT -ge $CRITICAL ]]; then
+	if [ $RESULT -ge $CRITICAL ]; then
 		echo "VARNISH $FIELD CRITICAL - $RESULT $PERF_DATA"
 		exit $STATE_CRITICAL
-	elif [[ $RESULT -ge $WARNING ]]; then
+	elif [ $RESULT -ge $WARNING ]; then
 		echo "VARNISH $FIELD WARNING - $RESULT $PERF_DATA"
 		exit $STATE_WARNING
 	else
@@ -92,7 +92,7 @@ while getopts ":H:u:p:f:w:c:P:h" opt; do
 		f) FIELD=$OPTARG;;
 		w) WARNING=$OPTARG;;
 		c) CRITICAL=$OPTARG;;
-		P) if [[ ! -z "$OPTARG" ]]; then
+		P) if [ ! -z "$OPTARG" ]; then
 			PORT=$OPTARG
 		   fi;;
 		\?) echo "Invalid option: -$OPTARG" >&2; _usage; exit $STATE_CRITICAL;;
@@ -100,19 +100,19 @@ while getopts ":H:u:p:f:w:c:P:h" opt; do
 	esac
 done
 
-# Check arguments
-if [[ -z "$HOST" || -z "$USER" || -z "$PASS" || -z "$FIELD" || -z "$WARNING" || -z "$CRITICAL" ]]; then
+# Check empty arguments
+if [[ -z $HOST || -z $USER || -z $PASS || -z $FIELD || -z $WARNING || -z $CRITICAL ]]; then
         echo "Empty obligatory arguments"
         _usage
-        exit $STATE_WARNING;
-elif [[ -z "$PORT" ]]; then
+        exit $STATE_WARNING
+elif [ -z $PORT ]; then
 	PORT=6085
 fi
 
-# Check dependences
-if [[ ! $(which jq) ]]; then
+# Check if jq is installed
+if [ ! $(which jq) ]; then
 	echo "jq isn't installed. Please install it"
-	exit $STATE_CRITICAL;
+	exit $STATE_CRITICAL
 fi
 
 # Vars
@@ -125,12 +125,9 @@ PERF_DATA="${DESCRIPTION}| ${DESCRIPTION}=${RESULT};${WARNING};${CRITICAL};0"
 
 
 # Main #####################################################
-
-if [[ -z "$JSON" ]]; then
-	exit $STATE_CRITICAL;
-fi
-
-if [[ "$FLAG" == "b" ]]; then
+if [ -z "$JSON" ]; then
+	exit $STATE_CRITICAL
+elif [ $FLAG == "b" ]; then
 	exit $STATE_UNKNOWN
 else
 	_main
