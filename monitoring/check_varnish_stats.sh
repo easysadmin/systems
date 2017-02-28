@@ -117,7 +117,7 @@ fi
 
 # Validate request
 REQUEST=$(curl -s -I -u ${USER}:${PASS} http://${HOST}:${PORT}/status/ | head -1)
-STATUS_CODE=$(echo $REQUEST | awk '{ print $2 '})
+STATUS_CODE=$(echo $REQUEST | awk '{ print $2 }')
 if [ $STATUS_CODE != 200 ]; then
 	echo "Something has gone wrong. $REQUEST"
 	exit $STATE_CRITICAL
