@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #------------------------------------------------------------------------------
-# [Syspixel] Check Cloudera Manager Services Status
+# [Syspixel] Check Cloudera Manager Services status
 # 	     Nagios check for Cloudera Manager API 
 #
 # Dependencies: https://stedolan.github.io/jq/
