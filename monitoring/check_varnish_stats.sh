@@ -6,10 +6,12 @@
 # Dependencies: https://www.varnish-cache.org/
 #  		https://stedolan.github.io/jq/
 #
-# TODO
-# check flag 'b'
 #------------------------------------------------------------------------------
-VERSION=1.2.2
+VERSION=1.2.3
+
+# Debug (activate: 1)
+DEBUG=0
+DIR_LOG="/var/log/varnish_log/"
 
 # Exit codes
 STATE_OK=0
@@ -37,6 +39,14 @@ echo "Usage: check_varnish_stats.sh [-h help] -H <host> [-P port] -u <user> -p <
   3  unknown"
 }
 
+# Save debug
+_debug() {
+	if [ ! -d $DIR_LOG ]; then
+		mkdir -p $DIR_LOG
+		chown nagios: $DIR_LOG
+	fi
+}
+
 # Save temp value for counters
 _persistanceValue() {
 	if [ ! -f /tmp/${HOST}_${FIELD} ]; then
@@ -47,12 +57,12 @@ _persistanceValue() {
 
 # Less than zero
 _lessZero() {
-	NUM=$(expr $VALUE - $(</tmp/${HOST}_${FIELD}))
-	if [ $NUM -lt 0 ]; then
- 		NUM=0
-		echo $NUM
+	OPERATION=$(expr $VALUE - $(</tmp/${HOST}_${FIELD}))
+	if [ $OPERATION -lt 0 ]; then
+ 		OPERATION=0
+		echo $OPERATION
 	else
-		echo $NUM
+		echo $OPERATION
 	fi
 }
 
@@ -61,9 +71,22 @@ _returnValue() {
 	if [ $FLAG == "c" ]; then
 		_persistanceValue
 		VALUE_TEMP=$(_lessZero)
+
+		# Debug
+		if [ $DEBUG == 1 ]; then
+			_debug
+			echo "$VALUE - $(cat /tmp/${HOST}_${FIELD}) = $VALUE_TEMP [$(date)]" >> ${DIR_LOG}${HOST}_${FIELD}
+		fi
+
 		echo $VALUE > /tmp/${HOST}_${FIELD}
 		echo $VALUE_TEMP
 	else
+		# Debug
+		if [ $DEBUG == 1 ]; then
+			_debug
+			echo "$VALUE [$(date)]" >> ${DIR_LOG}${HOST}_${FIELD}
+		fi
+
 		echo $VALUE
 	fi
 }
@@ -85,18 +108,43 @@ _main() {
 # Arguments
 while getopts ":H:u:p:f:w:c:P:h" opt; do
 	case $opt in
-		h) _usage; exit $STATE_OK;;
-		H) HOST=$OPTARG;;
-		u) USER=$OPTARG;;
-		p) PASS=$OPTARG;;
-		f) FIELD=$OPTARG;;
-		w) WARNING=$OPTARG;;
-		c) CRITICAL=$OPTARG;;
-		P) if [ ! -z "$OPTARG" ]; then
-			PORT=$OPTARG
-		   fi;;
-		\?) echo "Invalid option: -$OPTARG" >&2; _usage; exit $STATE_CRITICAL;;
-		:) echo "Requiere an argument: -$OPTARG" >&2; _usage; exit $STATE_CRITICAL;;
+		h) 
+			_usage 
+			exit $STATE_OK
+			;;
+		H) 
+			HOST=$OPTARG
+			;;
+		u)
+		       	USER=$OPTARG
+			;;
+		p) 
+			PASS=$OPTARG
+			;;
+		f) 
+			FIELD=$OPTARG
+			;;
+		w) 
+			WARNING=$OPTARG
+			;;
+		c) 
+			CRITICAL=$OPTARG
+			;;
+		P) 
+			if [ ! -z "$OPTARG" ]; then
+				PORT=$OPTARG
+			fi
+			;;
+		\?) 
+			echo "Invalid option: -$OPTARG" >&2
+			_usage
+			exit $STATE_CRITICAL
+			;;
+		:) 
+			echo "Requiere an argument: -$OPTARG" >&2
+			_usage
+			exit $STATE_CRITICAL
+			;;
 	esac
 done
 
@@ -116,7 +164,7 @@ if [ ! $(which jq) ]; then
 fi
 
 # Validate request
-REQUEST=$(curl -s -I -u ${USER}:${PASS} http://${HOST}:${PORT}/status/ | head -1)
+REQUEST=$(curl -sI -u ${USER}:${PASS} http://${HOST}:${PORT}/status/ | head -1)
 STATUS_CODE=$(echo $REQUEST | awk '{ print $2 }')
 if [ $STATUS_CODE != 200 ]; then
 	echo "Something has gone wrong. $REQUEST"
@@ -131,14 +179,14 @@ if [ $? != 0 ]; then
 fi
 
 # Vars
-FLAG=$(echo ${JSON} | jq '.flag' | sed -e 's/"//g')
-VALUE=$(echo ${JSON} | jq '.value')
-DESCRIPTION=$(echo ${JSON} | jq '.description' | sed -e 's/"//g' | sed -e 's/ /_/g')
+FLAG=$(echo $JSON | jq '.flag' | sed -e 's/"//g')
+VALUE=$(echo $JSON | jq '.value')
+DESCRIPTION=$(echo $JSON | jq '.description' | sed -e 's/"//g' | sed -e 's/ /_/g')
 RESULT=$(_returnValue)
-PERF_DATA="${DESCRIPTION}| ${DESCRIPTION}=${RESULT};${WARNING};${CRITICAL};0"
-
+PERF_DATA="$DESCRIPTION| $DESCRIPTION=$RESULT;$WARNING;$CRITICAL;0"
 
 # Main #####################################################
+# TODO check flag 'b'
 if [ -z "$JSON" ]; then
 	exit $STATE_CRITICAL
 elif [ $FLAG == "b" ]; then
