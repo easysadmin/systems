@@ -17,7 +17,7 @@ H2O_LEVEL_LOG="INFO" # TRACE, DEBUG, INFO, WARN, ERRR, FATAL
 H2O_PORT=54321
 
 # JAVA CONFIG
-JAVA_MEMORY="6g" # Max memory
+JAVA_MEMORY="1g" # Max memory
 
 # Verify running as root user
 if [ "$(id -u)" != "0" ]; then
@@ -25,6 +25,30 @@ if [ "$(id -u)" != "0" ]; then
         echo "Failed running with sudo. Exiting." 1>&2
         exit 1
     fi
+fi
+
+# Ask vars
+REGEXNUMBER='^[0-9]+$'
+REGEXLETTER='^[a-zA-Z]+$'
+read -p "Java max memory? (Gb) [default: 1]: " JAVA_MEM
+read -p "Cluster's name? [default: MyCloud]: " CLUSTER_NAME
+read -p "Listen port? [default: 54321]: " PORT
+
+if [[ ! -z "$JAVA_MEM" && "$JAVA_MEM" =~ $REGEXNUMBER ]]; then
+	JAVA_MEMORY=${JAVA_MEM}g
+fi
+
+#TODO Accepts number
+if [[ ! -z "$CLUSTER_NAME" && "$CLUSTER_NAME" =~ $REGEXLETTER ]]; then
+	H2O_CLUSTER_NAME=$CLUSTER_NAME
+fi
+
+# Check if port is busy
+PORT_EXIST=$(ss -laputen | grep LISTEN | grep :$PORT >/dev/null; echo $?)
+if [[ ! -z "$PORT" && "$PORT" =~ $REGEXNUMBER && $PORT_EXIST != 0 ]]; then
+	H2O_PORT=$PORT
+else
+	echo "The listen port is: $H2O_PORT"
 fi
 
 # Install JAVA
