@@ -50,7 +50,6 @@ _debug() {
 # Save temp value for counters
 _persistanceValue() {
 	if [ ! -f /tmp/${HOST}_${FIELD} ]; then
-		touch /tmp/${HOST}_${FIELD}
 		echo $VALUE > /tmp/${HOST}_${FIELD}
 	fi
 }
