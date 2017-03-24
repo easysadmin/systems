@@ -208,10 +208,13 @@ fi
 # Validate field
 if [ $FIELD != "HIT_RATE" ]; then
 	JSON=$(curl -sN -u ${USER}:${PASS} http://${HOST}:${PORT}/stats/ | jq -e -S ".\"${FIELD}\"")
-	if [ $? != 0 ]; then
-		echo "Something has gone wrong. jq says: $JSON"
-		exit $STATE_CRITICAL
-	fi
+else
+	JSON=$(curl -sN -u ${USER}:${PASS} http://${HOST}:${PORT}/stats/)
+fi
+
+if [ $? != 0 ]; then
+	echo "Something has gone wrong. jq says: $JSON"
+	exit $STATE_CRITICAL
 fi
 
 # Vars
@@ -221,17 +224,20 @@ fi
 
 # Main ##########################################
 
-if [[ $FIELD == "HIT_RATE" ]]; then
+if [[ -z "$JSON" ]]; then
+	exit $STATE_CRITICAL
+
+elif [[ $FIELD == "HIT_RATE" ]]; then
 	# Change flag to save values 
 	FLAG="c"
 
 	# Save hit
-	VALUE=$(curl -sN -u ${USER}:${PASS} http://${HOST}:${PORT}/stats/ | jq -e -S ".\"MAIN.cache_hit\".value")
+	VALUE=$(echo $JSON | jq -e -S ".\"MAIN.cache_hit\".value")
 	FIELD="MAIN.cache_hit_hr"
 	HIT=$(_returnValue)
 	
 	# Save miss
-	VALUE=$(curl -sN -u ${USER}:${PASS} http://${HOST}:${PORT}/stats/ | jq -e -S ".\"MAIN.cache_miss\".value")
+	VALUE=$(echo $JSON | jq -e -S ".\"MAIN.cache_miss\".value")
 	FIELD="MAIN.cache_miss_hr"
 	MISS=$(_returnValue)
 
@@ -242,8 +248,6 @@ if [[ $FIELD == "HIT_RATE" ]]; then
 	PERF_DATA="$DESCRIPTION| $DESCRIPTION=$RESULT;$WARNING;$CRITICAL;0"
 	_mainhit
 
-elif [[ -z "$JSON" ]]; then
-	exit $STATE_CRITICAL
 
 elif [[ $FLAG == "c" || $FLAG == "g" ]]; then 
 	VALUE=$(echo $JSON | jq '.value')
