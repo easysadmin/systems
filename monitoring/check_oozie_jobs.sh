@@ -52,12 +52,12 @@ if [[ -z "$HOST" || -z "$URL" || -z "$NAME" ]]; then
         echo "Empty obligatory arguments"
         _usage
         exit $STATE_WARNING
-elif [ -z $LEN ]; then
+elif [[ -z "$LEN" ]]; then
 	LEN=1
 fi
 
 # Comprobe if jobs come from various workflows
-function _checkjobs {
+_checkjobs() {
 	for i in `seq 1 $(expr $LEN "*" 3)`; do # 3 => amounts of stats to show (status, date created and time created)
 		if ! (( $i % 3 )); then
 			STAT1=$(echo $1 | cut -d" " -f$(expr $i - 2))
@@ -86,7 +86,7 @@ DESC=$(echo $STATUS | awk '{ print $1 " (Started: " $2, $3 ")" }')
 
 
 # Main #####################################################
-if [ -z $RESULT ]; then
+if [[ -z "$RESULT" ]]; then
 	echo "Don't found name's job"
 	exit $STATE_CRITICAL
 fi
