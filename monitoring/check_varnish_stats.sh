@@ -45,71 +45,70 @@ echo "Usage: check_varnish_stats.sh [-h help] -H <host> [-P port] -u <user> -p <
 
 # Save debug
 _debug() {
-	if [ ! -d $DIR_LOG ]; then
-		mkdir -p $DIR_LOG
-		chown nagios: $DIR_LOG
+	if [[ ! -d "$DIR_LOG" ]]; then
+		mkdir -p "$DIR_LOG"
+		chown nagios: "$DIR_LOG"
 	fi
 }
 
 # Save temp value for counters
 _persistanceValue() {
-	if [ ! -f /tmp/${HOST}_${FIELD} ]; then
-		echo $VALUE > /tmp/${HOST}_${FIELD}
+	if [[ ! -f "/tmp/${HOST}_${FIELD}" ]]; then
+		echo "$VALUE" > "/tmp/${HOST}_${FIELD}"
 	fi
 }
 
 # Calculate the result
 _calcResult() {
-	OPERATION=$(expr $VALUE - $(</tmp/${HOST}_${FIELD}))
-	if [ $OPERATION -lt 0 ]; then
+	OPERATION=$(expr $VALUE - $(< "/tmp/${HOST}_${FIELD}"))
+	if [[ "$OPERATION" -lt 0 ]]; then
  		OPERATION=0
-		echo $OPERATION
+		echo "$OPERATION"
 	else
-		echo $OPERATION
+		echo "$OPERATION"
 	fi
 }
 
 # HIT Rate value
 _hitrate() {
-	if [[ $HIT -eq 0 && $MISS -eq 0 ]]; then
+	if [[ "$HIT" -eq 0 && "$MISS" -eq 0 ]]; then
 		VALUE=0
 	else
 		VALUE=$(( ($HIT * 100) / ($HIT + $MISS) ))
 	fi
-	echo $VALUE
+	echo "$VALUE"
 }
 
 # Return the result
 _returnValue() {
-	if [ $FLAG == "c" ]; then
+	if [[ "$FLAG" == "c" ]]; then
 		_persistanceValue
 		VALUE_TEMP=$(_calcResult)
 
 		# Debug
-		if [ $DEBUG == 1 ]; then
+		if [[ "$DEBUG" == 1 ]]; then
 			_debug
-			echo "$VALUE - $(cat /tmp/${HOST}_${FIELD}) = $VALUE_TEMP [$(date)]" >> ${DIR_LOG}${HOST}_${FIELD}
+			echo "$VALUE - $(cat /tmp/${HOST}_${FIELD}) = $VALUE_TEMP [$(date)]" >> "${DIR_LOG}${HOST}_${FIELD}"
 		fi
 
-		echo $VALUE > /tmp/${HOST}_${FIELD}
-		echo $VALUE_TEMP
+		echo "$VALUE" > "/tmp/${HOST}_${FIELD}"
+		echo "$VALUE_TEMP"
 	else
 		# Debug
-		if [ $DEBUG == 1 ]; then
+		if [[ "$DEBUG" == 1 ]]; then
 			_debug
-			echo "$VALUE [$(date)]" >> ${DIR_LOG}${HOST}_${FIELD}
+			echo "$VALUE [$(date)]" >> "${DIR_LOG}${HOST}_${FIELD}"
 		fi
-
-		echo $VALUE
+		echo "$VALUE"
 	fi
 }
 
 # Nagios check
 _main() {
-	if [[ $RESULT -ge $CRITICAL ]]; then
+	if [[ "$RESULT" -ge "$CRITICAL" ]]; then
 		echo "VARNISH $FIELD CRITICAL - $RESULT $PERF_DATA"
 		exit $STATE_CRITICAL
-	elif [[ $RESULT -ge $WARNING ]]; then
+	elif [[ "$RESULT" -ge "$WARNING" ]]; then
 		echo "VARNISH $FIELD WARNING - $RESULT $PERF_DATA"
 		exit $STATE_WARNING
 	else
@@ -118,11 +117,11 @@ _main() {
 	fi
 }
 
-_mainhit() {
-	if [[ $RESULT -le $CRITICAL ]]; then
+_mainhitrate() {
+	if [[ "$RESULT" -le "$CRITICAL" ]]; then
 		echo "VARNISH $FIELD CRITICAL - $RESULT $PERF_DATA"
 		exit $STATE_CRITICAL
-	elif [[ $RESULT -le $WARNING ]]; then
+	elif [[ "$RESULT" -le "$WARNING" ]]; then
 		echo "VARNISH $FIELD WARNING - $RESULT $PERF_DATA"
 		exit $STATE_WARNING
 	else
@@ -180,16 +179,16 @@ while getopts ":H:u:p:f:t:w:c:P:h" opt; do
 done
 
 # Check empty arguments
-if [[ -z $HOST || -z $USER || -z $PASS || -z $FIELD || -z $WARNING || -z $CRITICAL ]]; then
+if [[ -z "$HOST" || -z "$USER" || -z "$PASS" || -z "$FIELD" || -z "$WARNING" || -z "$CRITICAL" ]]; then
         echo "Empty obligatory arguments"
         _usage
         exit $STATE_WARNING
-elif [ -z $PORT ]; then
+elif [[ -z "$PORT" ]]; then
 	PORT=6085
 fi
 
 # Check if jq is installed
-if [ ! $(which jq) ]; then
+if [[ ! $(which jq) ]]; then
 	echo "jq isn't installed. Please install it"
 	exit $STATE_CRITICAL
 fi
@@ -197,28 +196,29 @@ fi
 # Validate request
 REQUEST=$(curl -sI -u ${USER}:${PASS} http://${HOST}:${PORT}/status/ | head -1)
 STATUS_CODE=$(echo $REQUEST | awk '{ print $2 }')
-if [[ -z $REQUEST ]]; then
+
+if [[ -z "$REQUEST" ]]; then
 	echo "Request failed"
 	exit $STATE_CRITICAL
-elif [[ $STATUS_CODE != 200 ]]; then
+elif [[ "$STATUS_CODE" != 200 ]]; then
 	echo "Something has gone wrong. $REQUEST"
 	exit $STATE_CRITICAL
 fi
 
 # Validate field
-if [ $FIELD != "HIT_RATE" ]; then
+if [[ "$FIELD" != "HIT_RATE" ]]; then
 	JSON=$(curl -sN -u ${USER}:${PASS} http://${HOST}:${PORT}/stats/ | jq -e -S ".\"${FIELD}\"")
 else
 	JSON=$(curl -sN -u ${USER}:${PASS} http://${HOST}:${PORT}/stats/)
 fi
 
-if [ $? != 0 ]; then
+if [[ $? != 0 ]]; then
 	echo "Something has gone wrong. jq says: $JSON"
 	exit $STATE_CRITICAL
 fi
 
 # Vars
-if [ -z $FLAG ]; then
+if [[ -z "$FLAG" ]]; then
 	FLAG=$(echo $JSON | jq '.flag' | sed -e 's/"//g')
 fi
 
@@ -227,7 +227,7 @@ fi
 if [[ -z "$JSON" ]]; then
 	exit $STATE_CRITICAL
 
-elif [[ $FIELD == "HIT_RATE" ]]; then
+elif [[ "$FIELD" == "HIT_RATE" ]]; then
 	# Change flag to save values 
 	FLAG="c"
 
@@ -246,10 +246,10 @@ elif [[ $FIELD == "HIT_RATE" ]]; then
 	DESCRIPTION="hit rate"
 	RESULT=$(_hitrate)
 	PERF_DATA="$DESCRIPTION| $DESCRIPTION=$RESULT;$WARNING;$CRITICAL;0"
-	_mainhit
+	_mainhitrate
 
 
-elif [[ $FLAG == "c" || $FLAG == "g" ]]; then 
+elif [[ "$FLAG" == "c" || "$FLAG" == "g" ]]; then
 	VALUE=$(echo $JSON | jq '.value')
 	DESCRIPTION=$(echo $JSON | jq '.description' | sed -e 's/"//g' | sed -e 's/ /_/g')
 	RESULT=$(_returnValue)
