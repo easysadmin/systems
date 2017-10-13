@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 #------------------------------------------------------------------------------
 # [Syspixel] Check Varnish Stats
 # 	     Nagios check for Varnish API Agent with perfdata

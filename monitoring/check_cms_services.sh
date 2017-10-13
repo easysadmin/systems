@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 #------------------------------------------------------------------------------
 # [Syspixel] Check Cloudera Manager Services status
 # 	     Nagios check for Cloudera Manager API 
