@@ -11,6 +11,6 @@ OwnCloud
 --------
 * [oc_local_ldap](https://github.com/easysadmin/systems/tree/master/owncloud): Move local users to LDAP
 
-H2O.ia
+H2O.ai
 ------
 * [bootstrap](https://github.com/easysadmin/systems/tree/master/h2o-setup): Simply script to install [H2O](https://www.h2o.ai) service
