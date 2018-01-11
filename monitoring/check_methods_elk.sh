@@ -6,11 +6,8 @@
 # Dependencies: https://stedolan.github.io/jq/
 #  		
 #
-# TODO
-# Fix status curl
-# Fix optional arguments
 #------------------------------------------------------------------------------
-VERSION=0.1
+VERSION=0.2
 
 # Exit codes
 STATE_OK=0
@@ -35,61 +32,6 @@ echo "Usage: check_cms_services.sh [-h help] -H <host> [-P port] -m <method> -w 
   1  if minor problems (e.g., cannot create a temp file)
   2  if serious trouble (e.g., cannot access command-line argument)
   3  unknown"
-}
-
-# Save temp value for counters
-_persistanceValue() {
-	if [ "$METHOD" == "POST" ]; then
-		if [ ! -f /tmp/${HOST}_${METHOD} ]; then
-			echo $VALUE > /tmp/${HOST}_${METHOD}
-		fi
-	else
-		if [ ! -f /tmp/${HOST}_${METHOD}_${CLEAN_PATH} ]; then
-			echo $VALUE > /tmp/${HOST}_${METHOD}_${CLEAN_PATH}
-		fi
-	fi
-}
-
-# Less than zero
-_lessZero() {
-	if [ "$METHOD" == "POST" ]; then
-		OPERATION=$(expr $VALUE - $(</tmp/${HOST}_${METHOD}))
-	else
-
-		OPERATION=$(expr $VALUE - $(</tmp/${HOST}_${METHOD}_${CLEAN_PATH}))
-	fi
-
-        if [ $OPERATION -lt 0 ]; then
-                OPERATION=0
-                echo $OPERATION
-        else
-                echo $OPERATION
-        fi
-}
-
-# Calculate the result
-_returnValue() {
-	_persistanceValue
-	VALUE_TEMP=$(_lessZero)
-	if [ "$METHOD" == "POST" ]; then
-		echo $VALUE > /tmp/${HOST}_${METHOD}
-	else
-		echo $VALUE > /tmp/${HOST}_${METHOD}_${CLEAN_PATH}
-	fi
-	echo $VALUE_TEMP
-}
-
-_main(){
-	if [ "$RESULT" -ge "$CRITICAL" ]; then
-		echo "METHOD $METHOD CRITICAL - $RESULT $METHOD $PERF_DATA"
-		exit $STATE_CRITICAL
-	elif [ "$RESULT" -ge "$WARNING" ]; then
-		echo "METHOD $METHOD WARNING - $RESULT $METHOD $PERF_DATA"
-		exit $STATE_WARNING
-	else
-		echo "METHOD $METHOD OK - $RESULT $METHOD $PERF_DATA"
-		exit $STATE_OK
-	fi
 }
 
 # Arguments
@@ -132,6 +74,60 @@ while getopts "h:P:p:H:m:w:c:" opt; do
 	esac
 done
 
+# Save temp value for counters
+_persistanceValue() {
+	if [ "$METHOD" == "POST" ]; then
+		if [ ! -f /tmp/${HOST}_${METHOD} ]; then
+			echo $VALUE > /tmp/${HOST}_${METHOD}
+		fi
+	else
+		if [ ! -f /tmp/${HOST}_${METHOD}_${CLEAN_PATH} ]; then
+			echo $VALUE > /tmp/${HOST}_${METHOD}_${CLEAN_PATH}
+		fi
+	fi
+}
+
+# Less than zero
+_lessZero() {
+	if [ "$METHOD" == "POST" ]; then
+		OPERATION=$(expr $VALUE - $(</tmp/${HOST}_${METHOD}))
+	else
+		OPERATION=$(expr $VALUE - $(</tmp/${HOST}_${METHOD}_${CLEAN_PATH}))
+	fi
+
+        if [ $OPERATION -lt 0 ]; then
+                OPERATION=0
+                echo $OPERATION
+        else
+                echo $OPERATION
+        fi
+}
+
+# Calculate the result
+_returnValue() {
+	_persistanceValue
+	VALUE_TEMP=$(_lessZero)
+	if [ "$METHOD" == "POST" ]; then
+		echo $VALUE > /tmp/${HOST}_${METHOD}
+	else
+		echo $VALUE > /tmp/${HOST}_${METHOD}_${CLEAN_PATH}
+	fi
+	echo $VALUE_TEMP
+}
+
+_main(){
+	if [ "$RESULT" -ge "$CRITICAL" ]; then
+		echo "METHOD $METHOD CRITICAL - $RESULT $METHOD $PERF_DATA"
+		exit $STATE_CRITICAL
+	elif [ "$RESULT" -ge "$WARNING" ]; then
+		echo "METHOD $METHOD WARNING - $RESULT $METHOD $PERF_DATA"
+		exit $STATE_WARNING
+	else
+		echo "METHOD $METHOD OK - $RESULT $METHOD $PERF_DATA"
+		exit $STATE_OK
+	fi
+}
+
 # Check empty arguments
 if [[ -z $HOST || -z $METHOD || -z $WARNING || -z $CRITICAL ]]; then
         echo "Empty obligatory arguments"
@@ -146,14 +142,6 @@ if [ ! $(which jq) ]; then
 	echo "jq isn't installed. Please install it"
 	exit $STATE_CRITICAL
 fi
-
-# Validate field
-#REQUEST=$(curl -sI -u ${USER}:${PASS} http://${HOST}:${PORT}/api/v2/clusters/${CLUSTER}/services/${SERVICE} | head -1) #jq -e -S ".\"${FIELD}\"")
-#STATUS_CODE=$(echo $REQUEST | awk '{ print $2 }')
-#if [ $STATUS_CODE != 200 ]; then
-#	echo "Something has gone wrong. $REQUEST"
-#	exit $STATE_CRITICAL
-#fi
 
 # Clean path for GET methods
 if [ ! -z "$GET_PATH" ]; then 

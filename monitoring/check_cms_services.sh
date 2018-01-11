@@ -9,7 +9,7 @@
 # TODO
 # Fix case sensitive in service's name
 #------------------------------------------------------------------------------
-VERSION=0.1
+VERSION=0.2
 
 # Exit codes
 STATE_OK=0
