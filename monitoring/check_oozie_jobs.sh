@@ -4,7 +4,7 @@
 # [Syspixel] Check Oozie Jobs
 # 	     Nagios check for Oozie Jobs
 #
-# 
+# Dependencies: https://stedolan.github.io/jq/
 #
 # 
 #------------------------------------------------------------------------------
