@@ -1,4 +1,5 @@
 #!/bin/bash
+#set -x
 #------------------------------------------------------------------------------
 # [Syspixel] Check Oozie Jobs
 # 	     Nagios check for Oozie Jobs
@@ -7,7 +8,7 @@
 #
 # 
 #------------------------------------------------------------------------------
-VERSION=1.0
+VERSION=2.0
 
 # Exit codes
 STATE_OK=0
@@ -16,14 +17,13 @@ STATE_CRITICAL=2
 STATE_UNKNOWN=3
 
 # Print help
-_usage() {
-echo "Usage: check_oozie_jobs.sh [-h help] -H <host> -U <url> -A <name-job> [-l len-jobs]
+usage() {
+echo "Usage: check_oozie_jobs.sh [-h help] -H <host> -U <url> -A <name-job> 
 
   -h	Print this help message
   -H	Host where is oozie
   -U	URL oozie endpoint
   -A	Name of job (App Name)
-  -l	Jobs amount to check. Default: 1.
   
   Exit status:
   0  if OK
@@ -35,54 +35,73 @@ echo "Usage: check_oozie_jobs.sh [-h help] -H <host> -U <url> -A <name-job> [-l 
 # Arguments
 while getopts ":H:U:A:l:h" opt; do
 	case $opt in
-		h) _usage; exit $STATE_OK;;
+		h) usage; exit $STATE_OK;;
 		H) HOST=$OPTARG;;
 		U) URL=$OPTARG;;
 		A) NAME=$OPTARG;;
-		l) if [[ ! -z "$OPTARG" ]]; then
-			LEN=$OPTARG
-		   fi;;
-		\?) echo "Invalid option: -$OPTARG" >&2; _usage; exit $STATE_CRITICAL;;
-		:) echo "Requiere an argument: -$OPTARG" >&2; _usage; exit $STATE_CRITICAL;;
+		\?) echo "Invalid option: -$OPTARG" >&2; usage; exit $STATE_CRITICAL;;
+		:) echo "Requiere an argument: -$OPTARG" >&2; usage; exit $STATE_CRITICAL;;
 	esac
 done
 
 # Check empty arguments
 if [[ -z "$HOST" || -z "$URL" || -z "$NAME" ]]; then
         echo "Empty obligatory arguments"
-        _usage
+        usage
         exit $STATE_WARNING
-elif [[ -z "$LEN" ]]; then
-	LEN=1
 fi
 
-# Comprobe if jobs come from various workflows
-_checkjobs() {
-	for i in `seq 1 $(expr $LEN "*" 3)`; do # 3 => amounts of stats to show (status, date created and time created)
-		if ! (( $i % 3 )); then
-			STAT1=$(echo $1 | cut -d" " -f$(expr $i - 2))
-			POS1=$(expr $i - 2)
-			POS2=$(expr $i - 1)
-			if [[ "$STAT1" == "SUCCEEDED" || "$STAT1" == "RUNNING" ]]; then
-				STATUS=$(echo $1 | cut -d" " -f$POS1,$POS2,$i)
-			else
-				STATUS=$(echo $1 | cut -d" " -f$POS1,$POS2,$i)
-				echo "$STATUS"
-				break
-			fi
-		fi
-	done
-
-	# If done without problems, correct response
-	echo "$STATUS"
+# Number of days
+datediff(){
+        D1=$(date -d "$1" +%s)
+        D2=$(date -d "$2" +%s)
+        DIFF=$(( ($D1 - $D2) / 86400 ))
+	echo $DIFF
 }
 
 # Vars
 SSH="ssh $HOST"
-JOBS=$($SSH "oozie jobs -oozie $URL -localtime -verbose -len $LEN -filter name=$NAME" | awk '{ print $14, $15, $16 }' | sed '1d;$d;/^\s*$/d')
-STATUS=$(_checkjobs "$JOBS")
-RESULT=$(echo $STATUS | awk '{ print $1 }')
-DESC=$(echo $STATUS | awk '{ print $1 " (Started: " $2, $3 ")" }')
+NOW=$(date '+%H:%M')
+NUM_JOBS=1
+JOB=$($SSH curl -s "${URL}/v1/jobs?filter=name%3D${NAME}&len=${NUM_JOBS}" | jq '.workflows[0] | { status, createdTime }')
+JOB_CREATED=$(echo $JOB | jq -r '.createdTime')
+JOB_STATUS=$(echo $JOB | jq -r '.status')
+JOB_DAY=$(date -d"${JOB_CREATED}" '+%Y-%m-%d')
+JOB_HOUR=$(date -d"${JOB_CREATED}" '+%H:%M')
+
+# Si el chequeo es antes de la hora de la creación del job se comprobará ayer
+# si es después se comprobará hoy
+if [[ "$NOW" < "$JOB_HOUR" ]]; then
+	# Ayer
+	YESTERDAY=$(date '+%Y-%m-%d' --date="1 day ago")
+
+	# Job
+	# Chequeamos el día.
+	DAYDIFF=$(datediff "$JOB_DAY" "$YESTERDAY") # Devuelve el número de días de diferencia
+
+	# Si es 0 significa que el de ayer se ha ejecutado.
+	if [ $DAYDIFF -ne 0 ]; then
+		RESULT="FAILED"
+	else
+		RESULT="${JOB_STATUS}"
+		DESC="$JOB_STATUS (Created: $JOB_DAY $JOB_HOUR)"
+	fi
+else
+	# Hoy
+	TODAY=$(date '+%Y-%m-%d')
+
+	# Job
+	# Con esto nos aseguamos que se ha ejecutado el de hoy. Chequeamos el día.
+	DAYDIFF=$(datediff "$JOB_DAY" "$TODAY") # Devuelve el número de días de diferencia
+
+	# Si es 0 significa que hoy se ha ejecutado.
+	if [ $DAYDIFF -ne 0 ]; then
+		RESULT="${JOB_STATUS}"
+	else
+		RESULT="${JOB_STATUS}"
+		DESC="$JOB_STATUS (Created: $JOB_DAY $JOB_HOUR)"
+	fi
+fi
 
 
 # Main #####################################################
@@ -92,9 +111,9 @@ if [[ -z "$RESULT" ]]; then
 fi
 
 if [[ "$RESULT" == "SUCCEEDED" || "$RESULT" == "RUNNING" ]]; then
-	echo "OOZIE'S JOB $NAME OK - $DESC"
+	echo "JOB $NAME - $DESC"
 	exit $STATE_OK
 else
-	echo "OOZIE'S JOB $NAME FAILED - $DESC"
+	echo "JOB $NAME FAILED"
 	exit $STATE_CRITICAL
 fi
