@@ -4,11 +4,11 @@
 # [Syspixel] Check Oozie Jobs
 # 	     Nagios check for Oozie Jobs
 #
-# Dependencies: https://stedolan.github.io/jq/
+# 
 #
 # 
 #------------------------------------------------------------------------------
-VERSION=2.0
+VERSION=2.1
 
 # Exit codes
 STATE_OK=0
@@ -61,48 +61,34 @@ datediff(){
 
 # Vars
 SSH="ssh $HOST"
-NOW=$(date '+%H:%M')
+NOW=$(date '+%s')
 NUM_JOBS=1
-JOB=$($SSH curl -s "${URL}/v1/jobs?filter=name%3D${NAME}&len=${NUM_JOBS}" | jq '.workflows[0] | { status, createdTime }')
+NAME_URL=$(echo $NAME | sed -e 's/ /%20/g')
+JOB=$($SSH curl -s "${URL}/v1/jobs?filter=name%3D${NAME_URL}&len=${NUM_JOBS}" | jq '.workflows[0] | { status, createdTime }')
 JOB_CREATED=$(echo $JOB | jq -r '.createdTime')
 JOB_STATUS=$(echo $JOB | jq -r '.status')
 JOB_DAY=$(date -d"${JOB_CREATED}" '+%Y-%m-%d')
 JOB_HOUR=$(date -d"${JOB_CREATED}" '+%H:%M')
+JOB_SECONDS=$(date -d"${JOB_CREATED}" '+%s')
 
 # Si el chequeo es antes de la hora de la creación del job se comprobará ayer
 # si es después se comprobará hoy
-if [[ "$NOW" < "$JOB_HOUR" ]]; then
-	# Ayer
-	YESTERDAY=$(date '+%Y-%m-%d' --date="1 day ago")
-
-	# Job
-	# Chequeamos el día.
-	DAYDIFF=$(datediff "$JOB_DAY" "$YESTERDAY") # Devuelve el número de días de diferencia
-
-	# Si es 0 significa que el de ayer se ha ejecutado.
-	if [ $DAYDIFF -ne 0 ]; then
-		RESULT="FAILED"
-	else
-		RESULT="${JOB_STATUS}"
-		DESC="$JOB_STATUS (Created: $JOB_DAY $JOB_HOUR)"
-	fi
-else
+if [[ $NOW -ge $JOB_SECONDS ]]; then
 	# Hoy
 	TODAY=$(date '+%Y-%m-%d')
 
 	# Job
-	# Con esto nos aseguamos que se ha ejecutado el de hoy. Chequeamos el día.
+	# Con esto nos aseguramos que se ha ejecutado el de hoy. Chequeamos el día.
 	DAYDIFF=$(datediff "$JOB_DAY" "$TODAY") # Devuelve el número de días de diferencia
 
-	# Si es 0 significa que hoy se ha ejecutado.
-	if [ $DAYDIFF -ne 0 ]; then
-		RESULT="${JOB_STATUS}"
-	else
+	# Desde ayer a hoy
+	if [[ $DAYDIFF -ge -1 && (${JOB_STATUS} == "SUCCEEDED" || ${JOB_STATUS} == "RUNNING") ]]; then
 		RESULT="${JOB_STATUS}"
 		DESC="$JOB_STATUS (Created: $JOB_DAY $JOB_HOUR)"
+	else
+		RESULT="FAILED"
 	fi
 fi
-
 
 # Main #####################################################
 if [[ -z "$RESULT" ]]; then
@@ -114,6 +100,6 @@ if [[ "$RESULT" == "SUCCEEDED" || "$RESULT" == "RUNNING" ]]; then
 	echo "JOB $NAME - $DESC"
 	exit $STATE_OK
 else
-	echo "JOB $NAME FAILED"
+	echo "JOB $NAME - FAILED"
 	exit $STATE_CRITICAL
 fi
