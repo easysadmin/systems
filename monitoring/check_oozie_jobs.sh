@@ -8,7 +8,7 @@
 #
 # 
 #------------------------------------------------------------------------------
-VERSION=2.1
+VERSION=2.2
 
 # Exit codes
 STATE_OK=0
@@ -18,12 +18,14 @@ STATE_UNKNOWN=3
 
 # Print help
 usage() {
-echo "Usage: check_oozie_jobs.sh [-h help] -H <host> -U <url> -A <name-job> 
+echo "Usage: check_oozie_jobs.sh [-h help] -H <host> -U <url> -A <name-job> [-n number] [-t hours] [-d days]
 
   -h	Print this help message
   -H	Host where is oozie
   -U	URL oozie endpoint
   -A	Name of job (App Name)
+  -t	Hours to pass before to be a wrong status (default: 2)
+  -d	Days to pass before to be a wrong status (default: 1)
   
   Exit status:
   0  if OK
@@ -33,12 +35,14 @@ echo "Usage: check_oozie_jobs.sh [-h help] -H <host> -U <url> -A <name-job>
 }
 
 # Arguments
-while getopts ":H:U:A:l:h" opt; do
+while getopts ":H:U:A:t:d:h" opt; do
 	case $opt in
 		h) usage; exit $STATE_OK;;
 		H) HOST=$OPTARG;;
 		U) URL=$OPTARG;;
 		A) NAME=$OPTARG;;
+		t) MAXHOURS=$OPTARG;;
+		d) MAXDAYS=$OPTARG;;
 		\?) echo "Invalid option: -$OPTARG" >&2; usage; exit $STATE_CRITICAL;;
 		:) echo "Requiere an argument: -$OPTARG" >&2; usage; exit $STATE_CRITICAL;;
 	esac
@@ -51,17 +55,36 @@ if [[ -z "$HOST" || -z "$URL" || -z "$NAME" ]]; then
         exit $STATE_WARNING
 fi
 
+# Complete default values
+if [[ -z "$MAXHOURS" && -z "$MAXDAYS" ]]; then
+	MAXHOURS=2
+	MAXDAYS=1
+elif [[ -z "$MAXHOURS" ]]; then
+	MAXHOURS=2
+elif [[ -z "$MAXDAYS" ]]; then
+	MAXDAYS=1
+fi
+
+
 # Number of days
 datediff(){
         D1=$(date -d "$1" +%s)
         D2=$(date -d "$2" +%s)
-        DIFF=$(( ($D1 - $D2) / 86400 ))
+        DIFF=$(( ($D2 - $D1) / 86400 ))
+	echo $DIFF
+}
+
+# Hour of difference
+hourdiff(){
+        D1=$(date -d "$1" +%s)
+        D2=$(date +%s)
+        DIFF=$(( ($D2 - $D1) / 3600 ))
 	echo $DIFF
 }
 
 # Vars
 SSH="ssh $HOST"
-NOW=$(date '+%s')
+TODAY=$(date '+%Y-%m-%d')
 NUM_JOBS=1
 NAME_URL=$(echo $NAME | sed -e 's/ /%20/g')
 JOB=$($SSH curl -s "${URL}/v1/jobs?filter=name%3D${NAME_URL}&len=${NUM_JOBS}" | jq '.workflows[0] | { status, createdTime }')
@@ -69,25 +92,23 @@ JOB_CREATED=$(echo $JOB | jq -r '.createdTime')
 JOB_STATUS=$(echo $JOB | jq -r '.status')
 JOB_DAY=$(date -d"${JOB_CREATED}" '+%Y-%m-%d')
 JOB_HOUR=$(date -d"${JOB_CREATED}" '+%H:%M')
-JOB_SECONDS=$(date -d"${JOB_CREATED}" '+%s')
 
-# Si el chequeo es antes de la hora de la creación del job se comprobará ayer
-# si es después se comprobará hoy
-if [[ $NOW -ge $JOB_SECONDS ]]; then
-	# Hoy
-	TODAY=$(date '+%Y-%m-%d')
+# Interval between two dates
+DAYDIFF=$(datediff "$JOB_DAY" "$TODAY") 
+HOURDIFF=$(hourdiff "$JOB_CREATED") 
 
-	# Job
-	# Con esto nos aseguramos que se ha ejecutado el de hoy. Chequeamos el día.
-	DAYDIFF=$(datediff "$JOB_DAY" "$TODAY") # Devuelve el número de días de diferencia
+# Today
+# If a flow takes more than MAXHOURS hours -> Failed
+if [[ $DAYDIFF -eq 0 && $HOURDIFF -gt $MAXHOURS && ${JOB_STATUS} != "SUCCEEDED" ]]; then
+	RESULT="FAILED"
 
-	# Desde ayer a hoy
-	if [[ $DAYDIFF -ge -1 && (${JOB_STATUS} == "SUCCEEDED" || ${JOB_STATUS} == "RUNNING") ]]; then
-		RESULT="${JOB_STATUS}"
-		DESC="$JOB_STATUS (Created: $JOB_DAY $JOB_HOUR)"
-	else
-		RESULT="FAILED"
-	fi
+# Yesterday
+# If a flow takes more than MAXDAYS and wasn't SUCCEEDED status -> Failed
+elif [[ $DAYDIFF -le $MAXDAYS && ${JOB_STATUS} == "SUCCEEDED" ]]; then
+	RESULT="${JOB_STATUS}"
+	DESC="$JOB_STATUS (Created: $JOB_DAY $JOB_HOUR)"
+else
+	RESULT="FAILED"
 fi
 
 # Main #####################################################
